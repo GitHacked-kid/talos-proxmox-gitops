@@ -22,6 +22,7 @@ terraform/.terraform.tfstate.lock.info
 *.tfstate.*
 .terraformrc
 terraform.rc
+tfplan
 
 # Ansible
 ansible/*.retry

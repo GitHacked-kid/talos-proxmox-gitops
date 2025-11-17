@@ -30,7 +30,7 @@ This project demonstrates enterprise-grade infrastructure automation, showcasing
 
 ┌──────────────────┐
 │  Layer 1         │  Terraform Infrastructure
-│  Infrastructure  │  ├─ 3x Talos VMs (1 master + 2 workers)
+│  Infrastructure  │  ├─ 3x Talos VMs (1 control-plane + 2 workers)
 │                  │  └─ 1x NFS Server VM (Ubuntu 24.04)
 └─────────┬────────┘
           │

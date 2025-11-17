@@ -208,6 +208,7 @@ layer1_infrastructure() {
     terraform apply tfplan
 
     log "✅ Layer 1 Complete: Infrastructure deployed"
+    echo "VMs Created (4 total):"
     echo "  - Talos Control Plane: 10.20.0.40"
     echo "  - Talos Worker 1: 10.20.0.41"
     echo "  - Talos Worker 2: 10.20.0.42"

@@ -1,6 +1,6 @@
 ---
 # Static Ansible Inventory - All IPs configured via Terraform static IPs or DHCP reservations
-# Ubuntu VMs: NFS: 10.20.0.44, Media: 10.20.0.45
+# Ubuntu VMs: NFS: 10.20.0.44
 # Talos K8s: CP: 10.20.0.40, Worker1: 10.20.0.41, Worker2: 10.20.0.42 (DHCP reserved by MAC)
 # Services in K8s: PostgreSQL, Redis
 
@@ -14,18 +14,12 @@ all:
           ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
           services:
             - nfs-server
-        ubuntu-media:
-          ansible_host: 10.20.0.45
-          ansible_user: ubuntu
-          ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
-          services:
-            - casaos
 
     # Group for NFS servers
     nfs_servers:
       hosts:
         ubuntu-nfs:
-  
+
   vars:
     ansible_python_interpreter: /usr/bin/python3
     # Network configuration
@@ -38,5 +32,3 @@ all:
     postgres_db: "homelab"
     postgres_user: "homelab"
     redis_port: 6379
-    # Media server configuration
-    jellyfin_data_path: "/opt/jellyfin"

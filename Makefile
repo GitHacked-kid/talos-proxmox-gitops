@@ -35,7 +35,7 @@ help: ## Display this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(GREEN)%-25s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "$(YELLOW)Deployment Order:$(NC)"
-	@echo "  1. $(GREEN)make layer1$(NC)  - Deploy infrastructure (4 VMs)"
+	@echo "  1. $(GREEN)make layer1$(NC)  - Deploy infrastructure (3 Talos + 1 NFS = 4 VMs)"
 	@echo "  2. $(GREEN)make layer2$(NC)  - Configure NFS + Talos Kubernetes"
 	@echo "  3. $(GREEN)make layer3$(NC)  - Deploy ArgoCD + GitOps apps"
 	@echo ""
