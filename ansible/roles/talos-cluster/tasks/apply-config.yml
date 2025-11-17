@@ -1,6 +1,33 @@
 ---
 # Apply Talos configuration to nodes
 
+- name: Check if cluster is already configured (talosconfig with endpoints)
+  ansible.builtin.command:
+    cmd: talosctl config info
+  environment:
+    TALOSCONFIG: "{{ talos_config_dir }}/rendered/talosconfig"
+  register: talosconfig_info
+  changed_when: false
+  failed_when: false
+
+- name: Check if nodes are already responding to Talos API
+  ansible.builtin.command:
+    cmd: talosctl version --short --nodes {{ talos_nodes.control_plane.ip }}
+  environment:
+    TALOSCONFIG: "{{ talos_config_dir }}/rendered/talosconfig"
+  register: talos_api_check
+  changed_when: false
+  failed_when: false
+  when: talosconfig_info.rc == 0
+
+- name: Set apply_needed fact
+  ansible.builtin.set_fact:
+    apply_needed: "{{ talosconfig_info.rc != 0 or talos_api_check.rc != 0 }}"
+
+- name: Display apply status
+  ansible.builtin.debug:
+    msg: "{{ '⚙️  Applying Talos configuration to nodes' if apply_needed else '✓ Nodes already configured, skipping apply' }}"
+
 - name: Apply control plane configuration
   ansible.builtin.command:
     cmd: >
@@ -8,6 +35,7 @@
       --nodes {{ talos_nodes.control_plane.ip }}
       --file rendered/controlplane.yaml
     chdir: "{{ talos_config_dir }}"
+  when: apply_needed | bool
   changed_when: true
   register: apply_cp_result
   failed_when: apply_cp_result.rc != 0
@@ -20,14 +48,16 @@
       --file rendered/{{ item.hostname }}.yaml
     chdir: "{{ talos_config_dir }}"
   loop: "{{ talos_nodes.workers }}"
+  when: apply_needed | bool
   changed_when: true
   register: apply_worker_result
   failed_when: apply_worker_result.rc != 0
 
 - name: Display apply result
   ansible.builtin.debug:
-    msg: "✓ Talos configuration applied to all nodes. Nodes are rebooting..."
+    msg: "{{ '✓ Talos configuration applied to all nodes. Nodes are rebooting...' if apply_needed else '✓ Configuration already applied, nodes ready' }}"
 
 - name: Wait for nodes to reboot and configure (3 minutes)
   ansible.builtin.pause:
     seconds: 180
+  when: apply_needed | bool

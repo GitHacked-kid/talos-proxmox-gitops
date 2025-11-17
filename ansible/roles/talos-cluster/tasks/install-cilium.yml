@@ -7,6 +7,7 @@
     repo_url: https://helm.cilium.io/
   environment:
     KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
 
 - name: Install Cilium CNI
   kubernetes.core.helm:
@@ -43,12 +44,14 @@
         hostRoot: /sys/fs/cgroup
   environment:
     KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
 
 - name: Wait for Cilium pods to be ready
   ansible.builtin.command:
     cmd: kubectl wait --for=condition=ready pod -l k8s-app=cilium -n kube-system --timeout={{ wait_timeout_cilium }}s
   environment:
     KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
   changed_when: false
 
 - name: Wait for all nodes to become Ready (now that CNI is installed)
@@ -56,6 +59,7 @@
     cmd: kubectl get nodes --no-headers
   environment:
     KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
   register: nodes_ready_status
   until: >
     nodes_ready_status.stdout_lines | length == 3 and

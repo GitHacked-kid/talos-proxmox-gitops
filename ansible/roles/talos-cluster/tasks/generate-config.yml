@@ -12,6 +12,10 @@
     path: "{{ talos_config_dir }}/secrets.yaml"
   register: secrets_file
 
+- name: Display secrets status
+  ansible.builtin.debug:
+    msg: "{{ '✓ Using existing secrets.yaml' if secrets_file.stat.exists else '⚙️  Generating new secrets.yaml' }}"
+
 - name: Generate Talos secrets
   ansible.builtin.command:
     cmd: talosctl gen secrets
@@ -56,6 +60,15 @@
     mode: '0644'
   loop: "{{ talos_nodes.workers }}"
 
+- name: Check if rendered configs already exist
+  ansible.builtin.stat:
+    path: "{{ talos_config_dir }}/rendered/controlplane.yaml"
+  register: rendered_config
+
+- name: Display config generation status
+  ansible.builtin.debug:
+    msg: "{{ '✓ Using existing rendered configs' if rendered_config.stat.exists else '⚙️  Generating new Talos configs' }}"
+
 - name: Generate base Talos configuration for control plane
   ansible.builtin.command:
     cmd: >
@@ -68,6 +81,7 @@
       --config-patch-control-plane @controlplane-hostname.yaml
       --output rendered-cp
     chdir: "{{ talos_config_dir }}"
+  when: not rendered_config.stat.exists
   changed_when: true
 
 - name: Generate Talos configuration for workers
@@ -83,6 +97,7 @@
       --output rendered-{{ item.hostname }}
     chdir: "{{ talos_config_dir }}"
   loop: "{{ talos_nodes.workers }}"
+  when: not rendered_config.stat.exists
   changed_when: true
 
 - name: Create final rendered directory
@@ -97,6 +112,7 @@
     dest: "{{ talos_config_dir }}/rendered/controlplane.yaml"
     mode: '0644'
     remote_src: true
+  when: not rendered_config.stat.exists
 
 - name: Copy worker configs to rendered directory
   ansible.builtin.copy:
@@ -105,6 +121,7 @@
     mode: '0644'
     remote_src: true
   loop: "{{ talos_nodes.workers }}"
+  when: not rendered_config.stat.exists
 
 - name: Copy talosconfig to rendered directory
   ansible.builtin.copy:
@@ -112,7 +129,8 @@
     dest: "{{ talos_config_dir }}/rendered/talosconfig"
     mode: '0644'
     remote_src: true
+  when: not rendered_config.stat.exists
 
 - name: Display configuration generation result
   ansible.builtin.debug:
-    msg: "✓ Talos configuration generated in {{ talos_config_dir }}/rendered"
+    msg: "{{ '✓ Talos configuration ready (using existing)' if rendered_config.stat.exists else '✓ Talos configuration generated' }} in {{ talos_config_dir }}/rendered"
