@@ -61,6 +61,8 @@
     cmd: >
       talosctl gen config {{ cluster_name }} {{ cluster_endpoint }}
       --with-secrets secrets.yaml
+      --talos-version v{{ talos_version }}
+      --kubernetes-version v{{ kubernetes_version }}
       --config-patch @cni.yaml
       --config-patch @allowcontrolplanes.yaml
       --config-patch-control-plane @controlplane-hostname.yaml
@@ -73,6 +75,8 @@
     cmd: >
       talosctl gen config {{ cluster_name }} {{ cluster_endpoint }}
       --with-secrets secrets.yaml
+      --talos-version v{{ talos_version }}
+      --kubernetes-version v{{ kubernetes_version }}
       --config-patch @cni.yaml
       --config-patch @allowcontrolplanes.yaml
       --config-patch-worker @{{ item.hostname }}-hostname.yaml

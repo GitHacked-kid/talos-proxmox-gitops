@@ -31,6 +31,12 @@ cni_name: "none"
 # Allow scheduling on control plane
 allow_scheduling_on_control_planes: true
 
+# Talos version
+talos_version: "1.11.5"
+
+# Kubernetes version (must be compatible with Talos version)
+kubernetes_version: "1.34.1"
+
 # Cilium version
 cilium_version: "1.16.5"
 
