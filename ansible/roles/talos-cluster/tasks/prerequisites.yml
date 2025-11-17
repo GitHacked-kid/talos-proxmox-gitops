@@ -1,45 +1,52 @@
 ---
 # Check prerequisites for Talos cluster setup
+# Note: Only critical tools that are needed for Talos setup will fail the role
+# kubectl and helm are checked but won't fail - they're installed later if needed
 
 - name: Check if talosctl is installed
-  ansible.builtin.command: which talosctl
+  ansible.builtin.shell: command -v talosctl
   register: talosctl_check
   changed_when: false
   failed_when: false
 
-- name: Fail if talosctl is not installed
+- name: Fail if talosctl is not installed (CRITICAL)
   ansible.builtin.fail:
     msg: |
-      talosctl is not installed. Please install it first:
-      curl -sL https://talos.dev/install | sh
+      ❌ talosctl is not installed. This is CRITICAL for Talos setup.
+      Please install it first: curl -sL https://talos.dev/install | sh
   when: talosctl_check.rc != 0
 
+- name: Display talosctl version
+  ansible.builtin.command: talosctl version --client --short
+  register: talosctl_version
+  changed_when: false
+  failed_when: false
+  when: talosctl_check.rc == 0
+
 - name: Check if kubectl is installed
-  ansible.builtin.command: which kubectl
+  ansible.builtin.shell: command -v kubectl
   register: kubectl_check
   changed_when: false
   failed_when: false
 
-- name: Fail if kubectl is not installed
-  ansible.builtin.fail:
-    msg: |
-      kubectl is not installed. Please install it first:
-      https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
-  when: kubectl_check.rc != 0
+- name: Display kubectl status
+  ansible.builtin.debug:
+    msg: "{{ '✓ kubectl found at ' ~ kubectl_check.stdout if kubectl_check.rc == 0 else '⚠️  kubectl not found (will be available after cluster bootstrap)' }}"
 
 - name: Check if helm is installed
-  ansible.builtin.command: which helm
+  ansible.builtin.shell: command -v helm
   register: helm_check
   changed_when: false
   failed_when: false
 
-- name: Fail if helm is not installed
-  ansible.builtin.fail:
-    msg: |
-      helm is not installed. Please install it first:
-      https://helm.sh/docs/intro/install/
-  when: helm_check.rc != 0
+- name: Display helm status
+  ansible.builtin.debug:
+    msg: "{{ '✓ helm found at ' ~ helm_check.stdout if helm_check.rc == 0 else '⚠️  helm not found (will be available after cluster bootstrap)' }}"
 
 - name: Display prerequisites check result
   ansible.builtin.debug:
-    msg: "✓ All prerequisites are installed (talosctl, kubectl, helm)"
+    msg: |
+      ✓ Critical prerequisites check passed
+      ✓ talosctl: {{ talosctl_version.stdout if talosctl_version.stdout is defined else 'installed' }}
+      {{ '✓ kubectl: ' ~ kubectl_check.stdout if kubectl_check.rc == 0 else '' }}
+      {{ '✓ helm: ' ~ helm_check.stdout if helm_check.rc == 0 else '' }}

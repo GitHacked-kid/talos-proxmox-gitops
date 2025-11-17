@@ -52,17 +52,6 @@
     - nfs
     - storage
 
-- name: "Configure CasaOS Media Server"
-  hosts: ubuntu-media
-  become: true
-  roles:
-    - casaos
-  tags:
-    - casaos
-    - media
-    - jellyfin
-    - qbittorrent
-
 # Final verification tasks
 - name: "Verify Service Health"
   hosts: all
