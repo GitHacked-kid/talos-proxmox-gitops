@@ -199,6 +199,8 @@ make destroy  # Destroy all infrastructure
 
 ### Talos Configuration
 
+- **Talos Version**: v1.11.5
+- **Kubernetes Version**: v1.34.1
 - **Cluster Name**: homelab-cluster
 - **Cluster Endpoint**: https://10.20.0.40:6443
 - **CNI**: Cilium 1.16.5
@@ -210,22 +212,26 @@ make destroy  # Destroy all infrastructure
 
 ```bash
 # Export kubeconfig
-export KUBECONFIG=/tmp/talos-homelab-cluster/rendered/kubeconfig
+export KUBECONFIG=talos-homelab-cluster/rendered/kubeconfig
 
 # Check cluster status
 kubectl get nodes
 kubectl get pods -A
+
+# Or use make commands
+make status
 ```
 
 ### Access ArgoCD
 
 ```bash
-# Port forward to ArgoCD UI
-kubectl port-forward svc/argocd-server -n argocd 8080:443
-
 # Get admin password
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d
+make argocd-password
+
+# Port forward to ArgoCD UI
+make argocd-port-forward
+# Or manually:
+# kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 # Access at: https://localhost:8080
 # Username: admin
@@ -235,44 +241,68 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 
 ```bash
 # Set Talos config
-export TALOSCONFIG=/tmp/talos-homelab-cluster/rendered/talosconfig
+export TALOSCONFIG=talos-homelab-cluster/rendered/talosconfig
 
 # Check cluster health
-talosctl health
+make talos-health
+# Or manually:
+# talosctl health
 
 # View dashboard
-talosctl dashboard
+make talos-dashboard
+# Or manually:
+# talosctl dashboard
 
 # View logs
-talosctl logs -f
+make talos-logs
+# Or manually:
+# talosctl logs -f
 ```
 
 ## 🛠️ Troubleshooting
 
 ### Layer 2 Failure (Talos Setup)
 
-If Talos configuration fails, all Talos VMs are **automatically cleaned up**:
+If Talos configuration fails, the deployment will preserve infrastructure for debugging and retry:
 
 ```bash
-# Manually trigger cleanup if needed
-make ansible-cleanup
+# Retry Layer 2 without destroying VMs
+make layer2
 
-# Re-deploy from Layer 1
+# Or destroy only Talos VMs and redeploy (keeps NFS)
+make destroy-talos
 make layer1
 make layer2
+
+# Or destroy everything and start fresh
+make destroy
+make deploy
+```
+
+### Idempotent Operations
+
+All layers are idempotent and safe to re-run:
+
+```bash
+# Re-run any layer safely
+make layer2  # Will skip if configs already exist
+make layer3  # Will skip if ArgoCD already installed
 ```
 
 ### Cluster Access Issues
 
 ```bash
-# Check VM connectivity
-make ping
-
-# SSH to NFS server
-make ssh-nfs
-
-# View detailed status
+# View cluster status
 make status
+
+# Export kubeconfig
+export KUBECONFIG=talos-homelab-cluster/rendered/kubeconfig
+
+# Check nodes
+kubectl get nodes -o wide
+
+# Check all pods
+kubectl get pods -A
 ```
 
 ### ArgoCD Application Issues
@@ -309,12 +339,39 @@ make status
 ## 🗑️ Cleanup
 
 ```bash
-# Destroy all infrastructure
-make destroy
+# Destroy only Talos VMs (preserve NFS)
+make destroy-talos
 
-# Clean temporary files
-make clean
+# Destroy all infrastructure (Talos + NFS)
+make destroy
 ```
+
+## 🎯 Makefile Commands
+
+### Deployment
+- `make deploy` - Full 3-layer deployment
+- `make layer1` - Deploy infrastructure (Terraform)
+- `make layer2` - Configure NFS + Talos cluster (Ansible)
+- `make layer3` - Deploy GitOps applications (ArgoCD)
+
+### Management
+- `make status` - Check cluster status
+- `make status-apps` - Check ArgoCD applications
+- `make kubeconfig` - Display kubeconfig path
+- `make argocd-password` - Get ArgoCD admin password
+- `make argocd-port-forward` - Port forward to ArgoCD UI
+
+### Talos
+- `make talos-health` - Check Talos cluster health
+- `make talos-dashboard` - View Talos dashboard
+- `make talos-logs` - View Talos logs
+
+### Cleanup
+- `make destroy-talos` - Destroy only Talos VMs
+- `make destroy` - Destroy all infrastructure
+
+### Help
+- `make help` - Show all available commands
 
 ## 🔐 Security
 
