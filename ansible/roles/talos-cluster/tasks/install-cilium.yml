@@ -51,6 +51,22 @@
     KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
   changed_when: false
 
-- name: Display Cilium installation result
+- name: Wait for all nodes to become Ready (now that CNI is installed)
+  ansible.builtin.command:
+    cmd: kubectl get nodes --no-headers
+  environment:
+    KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+  register: nodes_ready_status
+  until: >
+    nodes_ready_status.stdout_lines | length == 3 and
+    nodes_ready_status.stdout is search('NotReady') == false
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Display final cluster status
   ansible.builtin.debug:
-    msg: "✓ Cilium CNI installed and ready"
+    msg: |
+      ✓ Cilium CNI installed and ready
+      ✓ All 3 nodes are now Ready:
+      {{ nodes_ready_status.stdout }}

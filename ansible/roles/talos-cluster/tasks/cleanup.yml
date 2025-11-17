@@ -6,33 +6,19 @@
   ansible.builtin.debug:
     msg: |
       ⚠️  Talos cluster setup failed!
-      ⚠️  Cleaning up all Talos VMs using Terraform...
 
-- name: Destroy Talos VMs using make destroy
-  ansible.builtin.shell:
-    cmd: make destroy
-    chdir: "{{ playbook_dir }}/../.."
-  environment:
-    PROXMOX_API_URL: "{{ lookup('env', 'PROXMOX_API_URL') }}"
-    PROXMOX_API_TOKEN_ID: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
-    PROXMOX_API_TOKEN_SECRET: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
-  ignore_errors: true
-  register: destroy_result
+      You can retry the setup without destroying VMs by running:
+        make layer2
 
-- name: Display destroy output
-  ansible.builtin.debug:
-    msg: "{{ destroy_result.stdout_lines if destroy_result.stdout_lines is defined else 'No output' }}"
-  when: destroy_result is defined
+      Or destroy Talos VMs and redeploy (keeps NFS):
+        make destroy-talos && make layer1 && make layer2
 
-- name: Clean up Talos configuration directory
-  ansible.builtin.file:
-    path: "{{ talos_config_dir }}"
-    state: absent
-  ignore_errors: true
+      Or destroy everything and start fresh:
+        make destroy && make deploy
 
 - name: Display cleanup result
   ansible.builtin.debug:
     msg: |
-      ✓ Cleanup completed
-      ✓ All Talos VMs have been destroyed via Terraform
-      ✓ Configuration directory cleaned up
+      ℹ️  Cleanup skipped - Talos VMs and configs preserved for retry
+      ℹ️  To manually destroy Talos VMs only: make destroy-talos
+      ℹ️  To manually destroy all infrastructure: make destroy

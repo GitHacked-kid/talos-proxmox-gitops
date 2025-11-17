@@ -99,8 +99,8 @@ terraform-apply: terraform-init terraform-validate ## Apply Terraform configurat
 	done
 
 .PHONY: terraform-destroy
-terraform-destroy: ## Destroy Terraform infrastructure
-	@echo "$(RED)⚠️  Destroying infrastructure...$(NC)"
+terraform-destroy: ## Destroy Terraform infrastructure (use 'make destroy' for safety)
+	@echo "$(RED)⚠️  Destroying infrastructure (no confirmation)...$(NC)"
 	cd $(TERRAFORM_DIR) && terraform destroy -auto-approve
 
 .PHONY: terraform-output
@@ -229,12 +229,29 @@ talos-logs: ## View Talos logs
 # ============================================================================
 
 .PHONY: destroy
-destroy: ## Destroy all infrastructure
+destroy: ## Destroy all infrastructure (Talos + NFS)
 	@echo "$(RED)⚠️  WARNING: This will destroy all infrastructure!$(NC)"
-	@read -p "Are you sure? (yes/NO): " confirm && [ "$$confirm" = "yes" ] || exit 1
+	@echo "$(YELLOW)The following will be destroyed:$(NC)"
+	@echo "  - 3 Talos VMs (control-plane + 2 workers)"
+	@echo "  - 1 NFS server VM"
+	@echo ""
+	@read -p "Type 'yes' to confirm destruction: " confirm && [ "$$confirm" = "yes" ] || { echo "$(GREEN)Destroy cancelled.$(NC)"; exit 1; }
 	@echo "$(RED)🔥 Destroying infrastructure...$(NC)"
-	$(MAKE) terraform-destroy
+	cd $(TERRAFORM_DIR) && terraform destroy -auto-approve
 	@echo "$(GREEN)✅ Infrastructure destroyed$(NC)"
+
+.PHONY: destroy-talos
+destroy-talos: ## Destroy only Talos VMs (preserve NFS)
+	@echo "$(RED)⚠️  WARNING: This will destroy Talos cluster VMs!$(NC)"
+	@echo "$(YELLOW)The following will be destroyed:$(NC)"
+	@echo "  - 3 Talos VMs (control-plane + 2 workers)"
+	@echo "$(GREEN)The following will be preserved:$(NC)"
+	@echo "  - NFS server VM"
+	@echo ""
+	@read -p "Type 'yes' to confirm destruction: " confirm && [ "$$confirm" = "yes" ] || { echo "$(GREEN)Destroy cancelled.$(NC)"; exit 1; }
+	@echo "$(RED)🔥 Destroying Talos VMs...$(NC)"
+	cd $(TERRAFORM_DIR) && terraform destroy -target=module.k8s_nodes -auto-approve
+	@echo "$(GREEN)✅ Talos VMs destroyed (NFS preserved)$(NC)"
 
 .PHONY: clean
 clean: ## Clean temporary files
