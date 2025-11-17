@@ -1,0 +1,13 @@
+---
+# Cleanup playbook for Talos VMs
+# This is called when Talos setup fails in GitHub Actions
+
+- name: Cleanup Talos VMs
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Include cleanup tasks
+      ansible.builtin.include_role:
+        name: talos-cluster
+        tasks_from: cleanup.yml

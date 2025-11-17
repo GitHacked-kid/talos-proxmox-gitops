@@ -1,0 +1,45 @@
+---
+# Check prerequisites for Talos cluster setup
+
+- name: Check if talosctl is installed
+  ansible.builtin.command: which talosctl
+  register: talosctl_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if talosctl is not installed
+  ansible.builtin.fail:
+    msg: |
+      talosctl is not installed. Please install it first:
+      curl -sL https://talos.dev/install | sh
+  when: talosctl_check.rc != 0
+
+- name: Check if kubectl is installed
+  ansible.builtin.command: which kubectl
+  register: kubectl_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if kubectl is not installed
+  ansible.builtin.fail:
+    msg: |
+      kubectl is not installed. Please install it first:
+      https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
+  when: kubectl_check.rc != 0
+
+- name: Check if helm is installed
+  ansible.builtin.command: which helm
+  register: helm_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if helm is not installed
+  ansible.builtin.fail:
+    msg: |
+      helm is not installed. Please install it first:
+      https://helm.sh/docs/intro/install/
+  when: helm_check.rc != 0
+
+- name: Display prerequisites check result
+  ansible.builtin.debug:
+    msg: "✓ All prerequisites are installed (talosctl, kubectl, helm)"

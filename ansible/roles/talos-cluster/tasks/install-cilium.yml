@@ -1,0 +1,56 @@
+---
+# Install Cilium CNI
+
+- name: Add Cilium Helm repository
+  kubernetes.core.helm_repository:
+    name: cilium
+    repo_url: https://helm.cilium.io/
+  environment:
+    KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+
+- name: Install Cilium CNI
+  kubernetes.core.helm:
+    name: cilium
+    chart_ref: cilium/cilium
+    chart_version: "{{ cilium_version }}"
+    release_namespace: kube-system
+    update_repo_cache: true
+    values:
+      ipam:
+        mode: kubernetes
+      kubeProxyReplacement: false
+      securityContext:
+        capabilities:
+          ciliumAgent:
+            - CHOWN
+            - KILL
+            - NET_ADMIN
+            - NET_RAW
+            - IPC_LOCK
+            - SYS_ADMIN
+            - SYS_RESOURCE
+            - DAC_OVERRIDE
+            - FOWNER
+            - SETGID
+            - SETUID
+          cleanCiliumState:
+            - NET_ADMIN
+            - SYS_ADMIN
+            - SYS_RESOURCE
+      cgroup:
+        autoMount:
+          enabled: false
+        hostRoot: /sys/fs/cgroup
+  environment:
+    KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+
+- name: Wait for Cilium pods to be ready
+  ansible.builtin.command:
+    cmd: kubectl wait --for=condition=ready pod -l k8s-app=cilium -n kube-system --timeout={{ wait_timeout_cilium }}s
+  environment:
+    KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+  changed_when: false
+
+- name: Display Cilium installation result
+  ansible.builtin.debug:
+    msg: "✓ Cilium CNI installed and ready"

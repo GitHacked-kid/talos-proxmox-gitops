@@ -1,0 +1,50 @@
+---
+# Bootstrap Talos Kubernetes cluster
+
+- name: Set TALOSCONFIG environment variable
+  ansible.builtin.set_fact:
+    talosconfig_path: "{{ talos_config_dir }}/rendered/talosconfig"
+
+- name: Configure talosctl endpoint
+  ansible.builtin.command:
+    cmd: talosctl config endpoint {{ talos_nodes.control_plane.ip }}
+  environment:
+    TALOSCONFIG: "{{ talosconfig_path }}"
+  changed_when: true
+
+- name: Configure talosctl node
+  ansible.builtin.command:
+    cmd: talosctl config node {{ talos_nodes.control_plane.ip }}
+  environment:
+    TALOSCONFIG: "{{ talosconfig_path }}"
+  changed_when: true
+
+- name: Wait for control plane to be ready
+  ansible.builtin.command:
+    cmd: talosctl health --server=false
+  environment:
+    TALOSCONFIG: "{{ talosconfig_path }}"
+  register: health_check
+  until: health_check.rc == 0
+  retries: 20
+  delay: 15
+  changed_when: false
+  failed_when: false
+
+- name: Fail if control plane is not ready
+  ansible.builtin.fail:
+    msg: "Control plane failed to become ready after 5 minutes"
+  when: health_check.rc != 0
+
+- name: Bootstrap Kubernetes cluster
+  ansible.builtin.command:
+    cmd: talosctl bootstrap
+  environment:
+    TALOSCONFIG: "{{ talosconfig_path }}"
+  changed_when: true
+  register: bootstrap_result
+  failed_when: bootstrap_result.rc != 0
+
+- name: Display bootstrap result
+  ansible.builtin.debug:
+    msg: "✓ Kubernetes cluster bootstrapped successfully"

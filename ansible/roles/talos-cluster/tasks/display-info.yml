@@ -1,0 +1,43 @@
+---
+# Display cluster information
+
+- name: Get node information
+  ansible.builtin.command:
+    cmd: kubectl get nodes -o wide
+  environment:
+    KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+  register: nodes_info
+  changed_when: false
+
+- name: Get system pods status
+  ansible.builtin.command:
+    cmd: kubectl get pods -n kube-system
+  environment:
+    KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
+  register: pods_info
+  changed_when: false
+
+- name: Display cluster summary
+  ansible.builtin.debug:
+    msg: |
+
+      ╔═══════════════════════════════════════════════════════════════╗
+      ║               TALOS CLUSTER DEPLOYMENT COMPLETE!             ║
+      ╚═══════════════════════════════════════════════════════════════╝
+
+      Cluster Details:
+        • Cluster Name: {{ cluster_name }}
+        • Cluster Endpoint: {{ cluster_endpoint }}
+        • Kubeconfig: {{ talos_config_dir }}/rendered/kubeconfig
+        • Talosconfig: {{ talos_config_dir }}/rendered/talosconfig
+
+      Node Information:
+      {{ nodes_info.stdout }}
+
+      System Pods Status:
+      {{ pods_info.stdout }}
+
+      Next Steps:
+        1. Export kubeconfig: export KUBECONFIG={{ talos_config_dir }}/rendered/kubeconfig
+        2. Install ArgoCD (Layer 3)
+        3. Deploy GitOps applications

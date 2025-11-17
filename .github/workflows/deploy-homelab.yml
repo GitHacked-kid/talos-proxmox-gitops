@@ -1,0 +1,276 @@
+name: Deploy Homelab Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_layer1:
+        description: 'Skip Layer 1 (Infrastructure)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      skip_layer2:
+        description: 'Skip Layer 2 (Configuration)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      skip_layer3:
+        description: 'Skip Layer 3 (GitOps)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+env:
+  TERRAFORM_DIR: terraform/proxmox-homelab
+  ANSIBLE_DIR: ansible
+  PROXMOX_NODE: pve
+  KUBECONFIG_PATH: /tmp/talos-homelab-cluster/rendered/kubeconfig
+
+jobs:
+  layer1-infrastructure:
+    name: "Layer 1: Terraform Infrastructure"
+    runs-on: self-hosted
+    if: inputs.skip_layer1 != 'true'
+    outputs:
+      terraform_applied: ${{ steps.terraform.outputs.applied }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Terraform Init
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        env:
+          TF_VAR_proxmox_api_url: ${{ secrets.PROXMOX_API_URL }}
+          TF_VAR_proxmox_api_token_id: ${{ secrets.PROXMOX_API_TOKEN_ID }}
+          TF_VAR_proxmox_api_token_secret: ${{ secrets.PROXMOX_API_TOKEN_SECRET }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+        run: |
+          terraform plan -out=tfplan
+          echo "Plan created successfully"
+
+      - name: Terraform Apply
+        id: terraform
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        env:
+          TF_VAR_proxmox_api_url: ${{ secrets.PROXMOX_API_URL }}
+          TF_VAR_proxmox_api_token_id: ${{ secrets.PROXMOX_API_TOKEN_ID }}
+          TF_VAR_proxmox_api_token_secret: ${{ secrets.PROXMOX_API_TOKEN_SECRET }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+        run: |
+          terraform apply -auto-approve tfplan
+          echo "applied=true" >> $GITHUB_OUTPUT
+
+      - name: Display Infrastructure Status
+        run: |
+          echo "✅ Layer 1 Complete: Infrastructure deployed"
+          echo "VMs Created:"
+          echo "  - Talos Control Plane: 10.20.0.40"
+          echo "  - Talos Worker 1: 10.20.0.41"
+          echo "  - Talos Worker 2: 10.20.0.42"
+          echo "  - NFS Server: 10.20.0.44"
+
+  layer2-configuration:
+    name: "Layer 2: Ansible Configuration + Talos Setup"
+    runs-on: self-hosted
+    needs: layer1-infrastructure
+    if: |
+      always() &&
+      (needs.layer1-infrastructure.result == 'success' || inputs.skip_layer1 == 'true') &&
+      inputs.skip_layer2 != 'true'
+    outputs:
+      talos_configured: ${{ steps.talos.outputs.configured }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Wait for VMs to be ready
+        run: |
+          echo "Waiting for VMs to boot and be network-ready..."
+          sleep 60
+
+          # Wait for NFS server
+          timeout 300 bash -c 'until ping -c 1 10.20.0.44 &>/dev/null; do sleep 5; done' || {
+            echo "❌ NFS server (10.20.0.44) not reachable"
+            exit 1
+          }
+
+          # Wait for Talos nodes
+          for ip in 10.20.0.40 10.20.0.41 10.20.0.42; do
+            timeout 300 bash -c "until ping -c 1 $ip &>/dev/null; do sleep 5; done" || {
+              echo "❌ Talos node $ip not reachable"
+              exit 1
+            }
+          done
+
+          echo "✅ All VMs are reachable"
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 10.20.0.44 >> ~/.ssh/known_hosts
+
+      - name: Configure NFS Server and Talos Cluster
+        id: talos
+        working-directory: ${{ env.ANSIBLE_DIR }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          PROXMOX_API_URL: ${{ secrets.PROXMOX_API_URL }}
+          PROXMOX_API_TOKEN_ID: ${{ secrets.PROXMOX_API_TOKEN_ID }}
+          PROXMOX_API_TOKEN_SECRET: ${{ secrets.PROXMOX_API_TOKEN_SECRET }}
+        run: |
+          ansible-playbook -i inventory.yml playbooks/layer2-configure.yml
+          echo "configured=true" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Cleanup Talos VMs on failure
+        if: steps.talos.outcome == 'failure'
+        working-directory: ${{ env.ANSIBLE_DIR }}
+        env:
+          PROXMOX_API_URL: ${{ secrets.PROXMOX_API_URL }}
+          PROXMOX_API_TOKEN_ID: ${{ secrets.PROXMOX_API_TOKEN_ID }}
+          PROXMOX_API_TOKEN_SECRET: ${{ secrets.PROXMOX_API_TOKEN_SECRET }}
+        run: |
+          echo "⚠️  Talos setup failed - cleaning up Talos VMs"
+          ansible-playbook -i inventory.yml playbooks/cleanup-talos.yml
+          exit 1
+
+      - name: Fail if Talos setup failed
+        if: steps.talos.outcome == 'failure'
+        run: exit 1
+
+      - name: Upload kubeconfig
+        if: steps.talos.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubeconfig
+          path: /tmp/talos-homelab-cluster/rendered/kubeconfig
+          retention-days: 7
+
+      - name: Display Configuration Status
+        if: steps.talos.outcome == 'success'
+        run: |
+          echo "✅ Layer 2 Complete: Configuration applied"
+          echo "Services Configured:"
+          echo "  - NFS Server at 10.20.0.44:/srv/nfs"
+          echo "  - Talos Kubernetes cluster (3 nodes)"
+          echo "  - Cilium CNI installed"
+
+  layer3-gitops:
+    name: "Layer 3: ArgoCD + GitOps Applications"
+    runs-on: self-hosted
+    needs: layer2-configuration
+    if: |
+      always() &&
+      (needs.layer2-configuration.result == 'success' || inputs.skip_layer2 == 'true') &&
+      inputs.skip_layer3 != 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download kubeconfig
+        if: inputs.skip_layer2 != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: kubeconfig
+          path: /tmp
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          if [ -f "/tmp/kubeconfig" ]; then
+            cp /tmp/kubeconfig ~/.kube/config
+          elif [ -f "${{ env.KUBECONFIG_PATH }}" ]; then
+            cp ${{ env.KUBECONFIG_PATH }} ~/.kube/config
+          else
+            echo "❌ Kubeconfig not found"
+            exit 1
+          fi
+          chmod 600 ~/.kube/config
+
+      - name: Verify cluster access
+        run: |
+          kubectl get nodes
+          kubectl get pods -A
+
+      - name: Install ArgoCD
+        working-directory: gitops
+        run: |
+          if kubectl get namespace argocd &>/dev/null; then
+            echo "ArgoCD namespace already exists, skipping installation"
+          else
+            echo "Installing ArgoCD..."
+            ./argocd_install.sh
+
+            # Wait for ArgoCD to be ready
+            echo "Waiting for ArgoCD to be ready..."
+            kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+          fi
+
+      - name: Deploy App-of-Apps
+        working-directory: gitops
+        run: |
+          kubectl apply -f app-of-apps.yaml
+          echo "✅ App-of-Apps deployed"
+
+      - name: Wait for applications to sync
+        run: |
+          echo "Waiting for applications to sync..."
+          sleep 60
+          kubectl get applications -n argocd
+
+      - name: Display GitOps Status
+        run: |
+          echo "✅ Layer 3 Complete: GitOps applications deployed"
+          echo ""
+          echo "Deployed Applications:"
+          kubectl get applications -n argocd -o custom-columns=NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status
+          echo ""
+          echo "ArgoCD Access:"
+          echo "  kubectl port-forward svc/argocd-server -n argocd 8080:443"
+          echo "  Get admin password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+
+  deployment-summary:
+    name: "Deployment Summary"
+    runs-on: self-hosted
+    needs: [layer1-infrastructure, layer2-configuration, layer3-gitops]
+    if: always()
+    steps:
+      - name: Display Deployment Summary
+        run: |
+          echo "╔═══════════════════════════════════════════════════════════════╗"
+          echo "║           HOMELAB DEPLOYMENT SUMMARY                         ║"
+          echo "╚═══════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "Layer 1 (Infrastructure): ${{ needs.layer1-infrastructure.result }}"
+          echo "Layer 2 (Configuration):  ${{ needs.layer2-configuration.result }}"
+          echo "Layer 3 (GitOps):         ${{ needs.layer3-gitops.result }}"
+          echo ""
+          if [[ "${{ needs.layer3-gitops.result }}" == "success" ]]; then
+            echo "🎉 Full deployment completed successfully!"
+          else
+            echo "⚠️  Deployment completed with some failures"
+          fi

@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nfs-provisioner
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: nfs-provisioner
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    chart: nfs-subdir-external-provisioner
+    repoURL: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+    targetRevision: 4.0.18
+    helm:
+      # NOTE: ensure each Kubernetes node has the NFS client installed (Ubuntu: `nfs-common`)
+      # and can reach the NFS server (10.20.0.44). If nodes don't have the client
+      # package installed, mounts from pods will fail with "access denied" or similar.
+      values: |
+        nfs:
+          server: 10.20.0.44
+          path: /srv/nfs
+        storageClass:
+          name: nfs-client
+          defaultClass: true
+          allowVolumeExpansion: true
+          reclaimPolicy: Delete
+          archiveOnDelete: false
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

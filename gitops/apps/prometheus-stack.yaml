@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: monitoring
+    server: https://kubernetes.default.svc
+  project: default
+  sources:
+    - repoURL: https://github.com/jamilshaikh07/talos-proxmox-gitops
+      path: manifests/monitoring-namespace
+      targetRevision: main
+    - repoURL: https://github.com/jamilshaikh07/talos-proxmox-gitops
+      path: manifests/prometheus-stack-config
+      targetRevision: main
+    - chart: kube-prometheus-stack
+      repoURL: https://prometheus-community.github.io/helm-charts
+      targetRevision: 77.6.2
+      helm:
+        skipCrds: false
+        values: |
+          crds:
+            enabled: true
+          prometheusOperator:
+            admissionWebhooks:
+              enabled: false
+            tls:
+              enabled: false
+          grafana:
+            adminPassword: admin
+            ingress:
+              enabled: false
+
+            # Disable init container that tries to chown (NFS doesn't support chown)
+            initChownData:
+              enabled: false
+
+            # Persistent storage for Grafana (Longhorn 5GB)
+            persistence:
+              enabled: true
+              type: pvc
+              existingClaim: grafana-storage
+              accessModes:
+                - ReadWriteOnce
+
+            # Enable sidecar for automatic dashboard loading
+            sidecar:
+              dashboards:
+                enabled: true
+                label: grafana_dashboard
+                labelValue: "1"
+                folder: /tmp/dashboards
+                folderAnnotation: grafana_folder
+                searchNamespace: ALL
+                provider:
+                  foldersFromFilesStructure: true
+              datasources:
+                enabled: true
+                label: grafana_datasource
+                labelValue: "1"
+                searchNamespace: ALL
+          prometheus:
+            prometheusSpec:
+              retention: 30d
+              storageSpec:
+                volumeClaimTemplate:
+                  spec:
+                    storageClassName: nfs-client
+                    accessModes: ["ReadWriteOnce"]
+                    resources:
+                      requests:
+                        storage: 10Gi
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - ServerSideApply=true
+      - Replace=true
+      - Validate=false
+      - RespectIgnoreDifferences=true

@@ -1,0 +1,21 @@
+---
+# Wait for Talos nodes to be reachable
+
+- name: Wait for control plane to be reachable
+  ansible.builtin.wait_for:
+    host: "{{ talos_nodes.control_plane.ip }}"
+    port: 50000  # Talos API port
+    timeout: 300
+    msg: "Control plane {{ talos_nodes.control_plane.ip }} is not reachable"
+
+- name: Wait for worker nodes to be reachable
+  ansible.builtin.wait_for:
+    host: "{{ item.ip }}"
+    port: 50000
+    timeout: 300
+    msg: "Worker {{ item.ip }} is not reachable"
+  loop: "{{ talos_nodes.workers }}"
+
+- name: Display node readiness
+  ansible.builtin.debug:
+    msg: "✓ All Talos nodes are reachable"

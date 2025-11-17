@@ -1,0 +1,35 @@
+---
+# Layer 2: Configuration - NFS Server + Talos Cluster
+# This playbook configures the NFS server and sets up the Talos Kubernetes cluster
+# If Talos setup fails, all Talos VMs are automatically destroyed for cleanup
+
+- name: Configure NFS Server
+  hosts: nfs_servers
+  become: true
+  roles:
+    - nfs-server
+  tags:
+    - nfs
+    - layer2
+
+- name: Configure Talos Kubernetes Cluster
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  roles:
+    - talos-cluster
+  tags:
+    - talos
+    - kubernetes
+    - layer2
+  rescue:
+    - name: Cleanup Talos VMs on failure
+      ansible.builtin.include_role:
+        name: talos-cluster
+        tasks_from: cleanup.yml
+      tags:
+        - cleanup
+
+    - name: Fail after cleanup
+      ansible.builtin.fail:
+        msg: "Talos cluster setup failed. All Talos VMs have been cleaned up."

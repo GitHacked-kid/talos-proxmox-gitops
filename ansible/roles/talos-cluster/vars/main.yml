@@ -1,0 +1,39 @@
+---
+# Talos Cluster Configuration Variables
+
+# Cluster configuration
+cluster_name: "homelab-cluster"
+cluster_endpoint: "https://10.20.0.40:6443"  # Control plane IP
+
+# Talos node configuration
+talos_nodes:
+  control_plane:
+    hostname: "talos-cp-01"
+    ip: "10.20.0.40"
+    vmid: 8001
+  workers:
+    - hostname: "talos-wk-01"
+      ip: "10.20.0.41"
+      vmid: 8002
+    - hostname: "talos-wk-02"
+      ip: "10.20.0.42"
+      vmid: 8003
+
+# Proxmox configuration (for cleanup)
+proxmox_node: "pve"  # Change this to match your Proxmox node name
+
+# Talos configuration directory
+talos_config_dir: "/tmp/talos-{{ cluster_name }}"
+
+# CNI to use (none = we'll install Cilium manually)
+cni_name: "none"
+
+# Allow scheduling on control plane
+allow_scheduling_on_control_planes: true
+
+# Cilium version
+cilium_version: "1.16.5"
+
+# Wait timeouts (in seconds)
+wait_timeout_nodes: 600
+wait_timeout_cilium: 300

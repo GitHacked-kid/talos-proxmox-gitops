@@ -1,0 +1,88 @@
+---
+################################################################################
+# Homelab Layer 2 - Ansible Site Configuration
+# 
+# This playbook configures services on Ubuntu VMs:
+# - NFS server (ubuntu-nfs VM) - Shared storage
+# - CasaOS media server (ubuntu-media VM) - Jellyfin, qBittorrent, Pi-hole
+# 
+# Services in Kubernetes (Layer 3):
+# - PostgreSQL (CloudNativePG)
+# - Redis (Helm chart)
+################################################################################
+
+- name: "Configure Ubuntu VMs - Base Setup"
+  hosts: ubuntu_vms
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install essential packages
+      apt:
+        name:
+          - curl
+          - wget
+          - vim
+          - htop
+          - git
+          - unzip
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Configure SSH key for ubuntu user
+      authorized_key:
+        user: ubuntu
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+        state: present
+
+# Service-specific configurations
+- name: "Configure NFS Server"
+  hosts: ubuntu-nfs
+  become: true
+  roles:
+    - nfs-server
+  tags:
+    - nfs
+    - storage
+
+- name: "Configure CasaOS Media Server"
+  hosts: ubuntu-media
+  become: true
+  roles:
+    - casaos
+  tags:
+    - casaos
+    - media
+    - jellyfin
+    - qbittorrent
+
+# Final verification tasks
+- name: "Verify Service Health"
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Check system uptime
+      command: uptime
+      register: uptime_result
+
+    - name: Display system info
+      debug:
+        msg: "{{ inventory_hostname }}: {{ uptime_result.stdout }}"
+
+    - name: Test network connectivity
+      ping:
+        data: "connectivity_test"
+      delegate_to: "{{ network_gateway }}"
+      run_once: true
+
+  tags:
+    - verify
+    - health-check

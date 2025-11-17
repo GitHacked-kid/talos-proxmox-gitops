@@ -1,0 +1,61 @@
+---
+# NFS Server Configuration Tasks
+# This role sets up an NFS server for shared storage across the homelab
+
+- name: Install NFS server packages
+  apt:
+    name:
+      - nfs-kernel-server
+      - nfs-common
+      - rpcbind
+    state: present
+    update_cache: true
+
+- name: Create NFS export directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: nobody
+    group: nogroup
+  loop:
+    - /srv/nfs
+    - /srv/nfs/shared
+    - /srv/nfs/media
+    - /srv/nfs/backups
+    - /srv/nfs/config
+
+- name: Configure NFS exports
+  template:
+    src: exports.j2
+    dest: /etc/exports
+    backup: true
+  notify: restart nfs-server
+
+- name: Start and enable NFS services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - rpcbind
+    - nfs-kernel-server
+
+- name: Configure firewall for NFS (if ufw is installed)
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+  loop:
+    - "111"      # rpcbind
+    - "2049"     # nfs
+    - "20048"    # mountd
+  ignore_errors: true
+
+- name: Display NFS export information
+  command: exportfs -v
+  register: nfs_exports
+  changed_when: false
+
+- name: Show NFS exports
+  debug:
+    var: nfs_exports.stdout_lines

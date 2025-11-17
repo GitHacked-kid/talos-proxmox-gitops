@@ -1,0 +1,19 @@
+# Pi-hole DNS Configuration
+# Custom DNS settings for homelab
+
+# Local domain resolution
+address=/homelab.local/{{ ansible_default_ipv4.address }}
+
+# Custom local DNS entries
+address=/nfs.homelab.local/{{ hostvars['ubuntu-nfs']['ansible_host'] }}
+address=/media.homelab.local/{{ hostvars['ubuntu-media']['ansible_host'] }}
+address=/redis.homelab.local/{{ hostvars['redis']['ansible_host'] }}
+address=/postgres.homelab.local/{{ hostvars['ubuntu-postgres']['ansible_host'] }}
+address=/dns.homelab.local/{{ ansible_default_ipv4.address }}
+
+# Expand hosts file entries
+expand-hosts
+domain=homelab.local
+
+# Cache settings
+cache-size=10000

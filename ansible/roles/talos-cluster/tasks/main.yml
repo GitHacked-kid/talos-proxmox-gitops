@@ -1,0 +1,42 @@
+---
+# Main tasks for Talos Kubernetes cluster setup
+
+- name: Check prerequisites
+  ansible.builtin.include_tasks: prerequisites.yml
+  tags:
+    - prerequisites
+
+- name: Wait for Talos nodes to be reachable
+  ansible.builtin.include_tasks: wait-for-nodes.yml
+  tags:
+    - wait
+
+- name: Generate Talos configuration
+  ansible.builtin.include_tasks: generate-config.yml
+  tags:
+    - generate
+
+- name: Apply Talos configuration to nodes
+  ansible.builtin.include_tasks: apply-config.yml
+  tags:
+    - apply
+
+- name: Bootstrap Talos cluster
+  ansible.builtin.include_tasks: bootstrap.yml
+  tags:
+    - bootstrap
+
+- name: Export kubeconfig
+  ansible.builtin.include_tasks: export-kubeconfig.yml
+  tags:
+    - kubeconfig
+
+- name: Install Cilium CNI
+  ansible.builtin.include_tasks: install-cilium.yml
+  tags:
+    - cilium
+
+- name: Display cluster information
+  ansible.builtin.include_tasks: display-info.yml
+  tags:
+    - info

@@ -1,0 +1,93 @@
+# Talos Proxmox GitOps - .gitignore
+
+# Talos Secrets and Configuration
+talos/secrets.yaml
+talos/*.yaml
+talos/rendered/
+talos/rendered-*/
+talos/*.yaml
+!talos/setup-talos-cluster.sh
+/tmp/talos-*
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/*.tfplan
+terraform/terraform.tfvars
+terraform/.terraform.tfstate.lock.info
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+.terraformrc
+terraform.rc
+
+# Ansible
+ansible/*.retry
+ansible/.ansible/
+ansible/group_vars/all/vault.yml
+*.retry
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Kubeconfig files
+kubeconfig
+*.kubeconfig
+**/kubeconfig
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+!*.pub
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+/tmp/
+temp/
+*.tmp
+
+# ArgoCD
+gitops/argocd-apps-backup/
+
+# Velero backups (local)
+velero-backups/
+
+# Other
+.cache/
+node_modules/

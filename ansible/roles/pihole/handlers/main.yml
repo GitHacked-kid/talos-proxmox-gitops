@@ -1,0 +1,22 @@
+---
+# Handlers for Pi-hole role
+
+- name: restart pihole-FTL
+  systemd:
+    name: pihole-FTL
+    state: restarted
+  become: true
+
+- name: disable pihole ntp sync
+  shell: |
+    pihole-FTL --config ntp.sync.interval 0
+  become: true
+  ignore_errors: true
+
+- name: reload pihole
+  shell: pihole restartdns
+  become: true
+
+- name: update gravity
+  shell: pihole -g
+  become: true

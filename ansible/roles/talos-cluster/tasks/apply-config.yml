@@ -1,0 +1,33 @@
+---
+# Apply Talos configuration to nodes
+
+- name: Apply control plane configuration
+  ansible.builtin.command:
+    cmd: >
+      talosctl apply-config --insecure
+      --nodes {{ talos_nodes.control_plane.ip }}
+      --file rendered/controlplane.yaml
+    chdir: "{{ talos_config_dir }}"
+  changed_when: true
+  register: apply_cp_result
+  failed_when: apply_cp_result.rc != 0
+
+- name: Apply worker configurations
+  ansible.builtin.command:
+    cmd: >
+      talosctl apply-config --insecure
+      --nodes {{ item.ip }}
+      --file rendered/{{ item.hostname }}.yaml
+    chdir: "{{ talos_config_dir }}"
+  loop: "{{ talos_nodes.workers }}"
+  changed_when: true
+  register: apply_worker_result
+  failed_when: apply_worker_result.rc != 0
+
+- name: Display apply result
+  ansible.builtin.debug:
+    msg: "✓ Talos configuration applied to all nodes. Nodes are rebooting..."
+
+- name: Wait for nodes to reboot and configure (3 minutes)
+  ansible.builtin.pause:
+    seconds: 180

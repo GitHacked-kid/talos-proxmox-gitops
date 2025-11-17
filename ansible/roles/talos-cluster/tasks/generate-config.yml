@@ -1,0 +1,114 @@
+---
+# Generate Talos configuration
+
+- name: Create Talos configuration directory
+  ansible.builtin.file:
+    path: "{{ talos_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Check if secrets.yaml already exists
+  ansible.builtin.stat:
+    path: "{{ talos_config_dir }}/secrets.yaml"
+  register: secrets_file
+
+- name: Generate Talos secrets
+  ansible.builtin.command:
+    cmd: talosctl gen secrets
+    chdir: "{{ talos_config_dir }}"
+  when: not secrets_file.stat.exists
+  changed_when: true
+
+- name: Create CNI configuration patch
+  ansible.builtin.copy:
+    content: |
+      cluster:
+        network:
+          cni:
+            name: {{ cni_name }}
+    dest: "{{ talos_config_dir }}/cni.yaml"
+    mode: '0644'
+
+- name: Create control plane scheduling patch
+  ansible.builtin.copy:
+    content: |
+      cluster:
+        allowSchedulingOnControlPlanes: {{ allow_scheduling_on_control_planes | lower }}
+    dest: "{{ talos_config_dir }}/allowcontrolplanes.yaml"
+    mode: '0644'
+
+- name: Create control plane hostname patch
+  ansible.builtin.copy:
+    content: |
+      machine:
+        network:
+          hostname: {{ talos_nodes.control_plane.hostname }}
+    dest: "{{ talos_config_dir }}/controlplane-hostname.yaml"
+    mode: '0644'
+
+- name: Create worker hostname patches
+  ansible.builtin.copy:
+    content: |
+      machine:
+        network:
+          hostname: {{ item.hostname }}
+    dest: "{{ talos_config_dir }}/{{ item.hostname }}-hostname.yaml"
+    mode: '0644'
+  loop: "{{ talos_nodes.workers }}"
+
+- name: Generate base Talos configuration for control plane
+  ansible.builtin.command:
+    cmd: >
+      talosctl gen config {{ cluster_name }} {{ cluster_endpoint }}
+      --with-secrets secrets.yaml
+      --config-patch @cni.yaml
+      --config-patch @allowcontrolplanes.yaml
+      --config-patch-control-plane @controlplane-hostname.yaml
+      --output rendered-cp
+    chdir: "{{ talos_config_dir }}"
+  changed_when: true
+
+- name: Generate Talos configuration for workers
+  ansible.builtin.command:
+    cmd: >
+      talosctl gen config {{ cluster_name }} {{ cluster_endpoint }}
+      --with-secrets secrets.yaml
+      --config-patch @cni.yaml
+      --config-patch @allowcontrolplanes.yaml
+      --config-patch-worker @{{ item.hostname }}-hostname.yaml
+      --output rendered-{{ item.hostname }}
+    chdir: "{{ talos_config_dir }}"
+  loop: "{{ talos_nodes.workers }}"
+  changed_when: true
+
+- name: Create final rendered directory
+  ansible.builtin.file:
+    path: "{{ talos_config_dir }}/rendered"
+    state: directory
+    mode: '0755'
+
+- name: Copy control plane config to rendered directory
+  ansible.builtin.copy:
+    src: "{{ talos_config_dir }}/rendered-cp/controlplane.yaml"
+    dest: "{{ talos_config_dir }}/rendered/controlplane.yaml"
+    mode: '0644'
+    remote_src: true
+
+- name: Copy worker configs to rendered directory
+  ansible.builtin.copy:
+    src: "{{ talos_config_dir }}/rendered-{{ item.hostname }}/worker.yaml"
+    dest: "{{ talos_config_dir }}/rendered/{{ item.hostname }}.yaml"
+    mode: '0644'
+    remote_src: true
+  loop: "{{ talos_nodes.workers }}"
+
+- name: Copy talosconfig to rendered directory
+  ansible.builtin.copy:
+    src: "{{ talos_config_dir }}/rendered-cp/talosconfig"
+    dest: "{{ talos_config_dir }}/rendered/talosconfig"
+    mode: '0644'
+    remote_src: true
+
+- name: Display configuration generation result
+  ansible.builtin.debug:
+    msg: "✓ Talos configuration generated in {{ talos_config_dir }}/rendered"

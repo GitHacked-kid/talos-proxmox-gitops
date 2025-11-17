@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homelab-services
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: homelab
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: manifests/homelab-services
+    repoURL: https://github.com/jamilshaikh07/talos-proxmox-gitops
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

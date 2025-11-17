@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metallb
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: metallb-system
+    server: https://kubernetes.default.svc
+  project: default
+  sources:
+    - repoURL: https://github.com/jamilshaikh07/talos-proxmox-gitops
+      path: manifests/metallb-namespace
+      targetRevision: main
+    - repoURL: https://github.com/jamilshaikh07/talos-proxmox-gitops
+      path: manifests/metallb-config
+      targetRevision: main
+    - chart: metallb
+      repoURL: https://metallb.github.io/metallb
+      targetRevision: 0.15.2
+      helm:
+        values: |
+          speaker:
+            tolerations:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Equal
+                effect: NoSchedule
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
