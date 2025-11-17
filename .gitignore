@@ -17,6 +17,7 @@ terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/*.tfplan
 terraform/terraform.tfvars
+*/terraform.auto.tfvars
 terraform/.terraform.tfstate.lock.info
 **/.terraform/*
 *.tfstate
