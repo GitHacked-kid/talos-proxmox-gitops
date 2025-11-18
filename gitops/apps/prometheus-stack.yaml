@@ -14,7 +14,7 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/jamilshaikh07/talos-proxmox-gitops
-      path: manifests/monitoring-namespace
+      path: gitops/manifests/monitoring-namespace
       targetRevision: master
     - chart: kube-prometheus-stack
       repoURL: https://prometheus-community.github.io/helm-charts

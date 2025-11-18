@@ -13,7 +13,7 @@ spec:
     server: https://kubernetes.default.svc
   project: default
   source:
-    path: manifests/homelab-services
+    path: gitops/manifests/homelab-services
     repoURL: https://github.com/jamilshaikh07/talos-proxmox-gitops
     targetRevision: master
   syncPolicy:

@@ -14,10 +14,10 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/jamilshaikh07/talos-proxmox-gitops
-      path: manifests/metallb-namespace
+      path: gitops/manifests/metallb-namespace
       targetRevision: master
     - repoURL: https://github.com/jamilshaikh07/talos-proxmox-gitops
-      path: manifests/metallb-config
+      path: gitops/manifests/metallb-config
       targetRevision: master
     - chart: metallb
       repoURL: https://metallb.github.io/metallb
