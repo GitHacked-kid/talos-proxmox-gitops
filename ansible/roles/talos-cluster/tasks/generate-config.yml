@@ -50,6 +50,25 @@
     dest: "{{ talos_config_dir }}/installer-version.yaml"
     mode: '0644'
 
+- name: Create kubelet certificate rotation patch
+  ansible.builtin.copy:
+    content: |
+      machine:
+        kubelet:
+          extraArgs:
+            rotate-server-certificates: "true"
+    dest: "{{ talos_config_dir }}/kubelet-certs.yaml"
+    mode: '0644'
+
+- name: Create kubelet cert approver patch
+  ansible.builtin.copy:
+    content: |
+      cluster:
+        extraManifests:
+          - https://raw.githubusercontent.com/alex1989hu/kubelet-serving-cert-approver/main/deploy/standalone-install.yaml
+    dest: "{{ talos_config_dir }}/kubelet-cert-approver.yaml"
+    mode: '0644'
+
 - name: Create control plane hostname patch
   ansible.builtin.copy:
     content: |
@@ -88,6 +107,8 @@
       --config-patch @cni.yaml
       --config-patch @allowcontrolplanes.yaml
       --config-patch @installer-version.yaml
+      --config-patch @kubelet-certs.yaml
+      --config-patch @kubelet-cert-approver.yaml
       --config-patch-control-plane @controlplane-hostname.yaml
       --output rendered-cp
     chdir: "{{ talos_config_dir }}"
@@ -104,6 +125,8 @@
       --config-patch @cni.yaml
       --config-patch @allowcontrolplanes.yaml
       --config-patch @installer-version.yaml
+      --config-patch @kubelet-certs.yaml
+      --config-patch @kubelet-cert-approver.yaml
       --config-patch-worker @{{ item.hostname }}-hostname.yaml
       --output rendered-{{ item.hostname }}
     chdir: "{{ talos_config_dir }}"
