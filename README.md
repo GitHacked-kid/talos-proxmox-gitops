@@ -430,5 +430,3 @@ For inquiries about this project or professional opportunities:
 - Project Link: [https://github.com/jamilshaikh07/talos-proxmox-gitops](https://github.com/jamilshaikh07/talos-proxmox-gitops)
 
 ---
-
-**Built with ❤️ for showcasing infrastructure automation skills**
