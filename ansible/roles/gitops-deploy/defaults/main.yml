@@ -10,11 +10,14 @@ talos_config_dir: "{{ playbook_dir }}/../../talos-{{ cluster_name }}"
 # Path to kubeconfig
 kubeconfig_path: "{{ talos_config_dir }}/rendered/kubeconfig"
 
-# Path to ArgoCD installation script
-argocd_install_script: "{{ playbook_dir }}/../../gitops/argocd_install.sh"
-
 # Path to app-of-apps manifest
 app_of_apps_manifest: "{{ playbook_dir }}/../../gitops/app-of-apps.yaml"
+
+# ArgoCD Helm configuration
+argocd_helm_repo: "https://argoproj.github.io/argo-helm"
+argocd_helm_chart: "argo-cd"
+argocd_helm_version: "7.7.12"
+argocd_namespace: "argocd"
 
 # Wait timeouts (in seconds)
 wait_timeout_argocd: 300

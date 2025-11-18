@@ -1,27 +1,65 @@
 ---
 # Deploy GitOps (ArgoCD + App-of-Apps)
 
-- name: Check if ArgoCD namespace already exists
+- name: Add ArgoCD Helm repository
   ansible.builtin.command:
-    cmd: kubectl get namespace argocd
+    cmd: helm repo add argo {{ argocd_helm_repo }}
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-  register: argocd_ns_check
+  register: helm_repo_add
+  changed_when: "'has been added' in helm_repo_add.stdout"
+  failed_when: false
+
+- name: Update Helm repositories
+  ansible.builtin.command:
+    cmd: helm repo update
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
+  changed_when: false
+
+- name: Check if ArgoCD is already installed
+  ansible.builtin.command:
+    cmd: helm list -n {{ argocd_namespace }} -o json
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
+  register: argocd_helm_check
   changed_when: false
   failed_when: false
 
+- name: Parse ArgoCD installation status
+  ansible.builtin.set_fact:
+    argocd_installed: "{{ (argocd_helm_check.stdout | from_json | selectattr('name', 'equalto', 'argocd') | list | length > 0) if argocd_helm_check.rc == 0 else false }}"
+
 - name: Display ArgoCD installation status
   ansible.builtin.debug:
-    msg: "{{ '✓ ArgoCD already installed, skipping installation' if argocd_ns_check.rc == 0 else '⚙️  Installing ArgoCD' }}"
+    msg: "{{ '✓ ArgoCD already installed, skipping installation' if argocd_installed else '⚙️  Installing ArgoCD via Helm' }}"
 
-- name: Install ArgoCD using installation script
+- name: Create ArgoCD namespace
   ansible.builtin.command:
-    cmd: bash {{ argocd_install_script }}
+    cmd: kubectl create namespace {{ argocd_namespace }}
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-  when: argocd_ns_check.rc != 0
+  when: not argocd_installed
+  register: create_ns
+  changed_when: create_ns.rc == 0
+  failed_when: create_ns.rc != 0 and 'already exists' not in create_ns.stderr
+
+- name: Install ArgoCD using Helm
+  ansible.builtin.command:
+    cmd: >
+      helm install argocd argo/{{ argocd_helm_chart }}
+      --namespace {{ argocd_namespace }}
+      --version {{ argocd_helm_version }}
+      --set server.service.type=ClusterIP
+      --set server.extraArgs[0]="--insecure"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
+  when: not argocd_installed
   changed_when: true
   register: argocd_install_result
 
@@ -95,6 +133,7 @@
 
       ArgoCD Details:
         • Namespace: argocd
+        • Installed via: Helm ({{ argocd_helm_version }})
         • App-of-Apps: Deployed
         • Repository: https://github.com/jamilshaikh07/talos-proxmox-gitops
 
