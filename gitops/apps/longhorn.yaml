@@ -17,8 +17,14 @@ spec:
     repoURL: https://charts.longhorn.io
     targetRevision: 1.10.1
     helm:
+      # Skip Helm hooks to avoid ArgoCD sync issues
+      skipCrds: false
       values: |
         # Longhorn v1.10.1 - Distributed Block Storage
+
+        # Disable problematic Helm hooks for GitOps compatibility
+        preUpgradeChecker:
+          jobEnabled: false
 
         # Default storage class configuration
         persistence:
