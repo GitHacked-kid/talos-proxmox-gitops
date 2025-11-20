@@ -1,0 +1,95 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: longhorn-system
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    chart: longhorn
+    repoURL: https://charts.longhorn.io
+    targetRevision: 1.10.1
+    helm:
+      values: |
+        # Longhorn v1.10.1 - Distributed Block Storage
+
+        # Default storage class configuration
+        persistence:
+          defaultClass: true
+          defaultClassReplicaCount: 3
+          defaultDataLocality: disabled
+          reclaimPolicy: Delete
+
+        # Default settings
+        defaultSettings:
+          # Storage configuration
+          defaultReplicaCount: 3
+          storageMinimalAvailablePercentage: 25
+          storageOverProvisioningPercentage: 200
+
+          # Node and volume management
+          nodeDownPodDeletionPolicy: do-nothing
+          nodeDrainPolicy: block-if-contains-last-replica
+          replicaReplenishmentWaitInterval: 600
+
+          # Backup configuration (using NFS)
+          backupTarget: nfs://10.20.0.44:/srv/nfs/backups
+          backupTargetCredentialSecret: ""
+
+          # Performance settings
+          guaranteedInstanceManagerCPU: 12
+
+          # Talos-specific settings
+          createDefaultDiskLabeledNodes: true
+          defaultDataPath: /var/lib/longhorn
+
+          # System management
+          orphanAutoDeletion: true
+
+        # Ingress configuration (disabled - use port-forward or separate ingress)
+        ingress:
+          enabled: false
+
+        # Monitoring integration
+        metrics:
+          serviceMonitor:
+            enabled: true
+            namespace: longhorn-system
+
+        # Service configuration
+        service:
+          ui:
+            type: ClusterIP
+
+        # Resource limits
+        longhornManager:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+        longhornDriver:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -3,35 +3,41 @@ locals {
   # Master nodes configuration
   master_nodes = {
     "talos-cp-01" = {
-      target_node = "alif"
-      memory      = 8192 # 8GB
-      cores       = 2
-      storage     = "local-lvm"
-      disk_size   = "50G"
-      disk_cache  = "writethrough"
-      mac_address = "BC:24:11:00:00:01" # Static MAC for DHCP reservation
+      target_node        = "alif"
+      memory             = 8192 # 8GB
+      cores              = 2
+      storage            = "local-lvm"
+      disk_size          = "50G"
+      disk_cache         = "writethrough"
+      longhorn_disk_size = "500G" # Longhorn distributed storage
+      longhorn_storage   = "local-lvm"
+      mac_address        = "BC:24:11:00:00:01" # Static MAC for DHCP reservation
     }
   }
 
   # Worker nodes configuration
   worker_nodes = {
     "talos-wk-01" = {
-      target_node = "alif"
-      memory      = 6144 # 6GB
-      cores       = 2
-      storage     = "local-lvm"
-      disk_size   = "50G"
-      disk_cache  = "writeback"
-      mac_address = "BC:24:11:00:00:02" # Static MAC for DHCP reservation
+      target_node        = "alif"
+      memory             = 6144 # 6GB
+      cores              = 2
+      storage            = "local-lvm"
+      disk_size          = "50G"
+      disk_cache         = "writeback"
+      longhorn_disk_size = "500G" # Longhorn distributed storage
+      longhorn_storage   = "local-lvm"
+      mac_address        = "BC:24:11:00:00:02" # Static MAC for DHCP reservation
     }
     "talos-wk-02" = {
-      target_node = "alif"
-      memory      = 6144 # 6GB
-      cores       = 2
-      storage     = "local-lvm"
-      disk_size   = "50G"
-      disk_cache  = "writeback"
-      mac_address = "BC:24:11:00:00:03" # Static MAC for DHCP reservation
+      target_node        = "alif"
+      memory             = 6144 # 6GB
+      cores              = 2
+      storage            = "local-lvm"
+      disk_size          = "50G"
+      disk_cache         = "writeback"
+      longhorn_disk_size = "500G" # Longhorn distributed storage
+      longhorn_storage   = "local-lvm"
+      mac_address        = "BC:24:11:00:00:03" # Static MAC for DHCP reservation
     }
   }
 
@@ -44,15 +50,18 @@ module "k8s_nodes" {
   source   = "./modules/talos-k8s"
   for_each = local.all_nodes
 
-  vm_name     = each.key
-  target_node = each.value.target_node
-  iso         = "local:iso/metal-amd64-v1.11.5.iso"
-  memory      = each.value.memory
-  cores       = each.value.cores
-  storage     = each.value.storage
-  disk_size   = each.value.disk_size
-  mac_address = each.value.mac_address
-  tags        = "kubernetes;talos;${contains(keys(local.master_nodes), each.key) ? "controlplane" : "worker"}"
+  vm_name            = each.key
+  target_node        = each.value.target_node
+  iso                = "local:iso/metal-amd64-v1.11.5.iso"
+  memory             = each.value.memory
+  cores              = each.value.cores
+  storage            = each.value.storage
+  disk_size          = each.value.disk_size
+  disk_cache         = each.value.disk_cache
+  longhorn_disk_size = lookup(each.value, "longhorn_disk_size", "")
+  longhorn_storage   = lookup(each.value, "longhorn_storage", "local-lvm")
+  mac_address        = each.value.mac_address
+  tags               = "kubernetes;talos;${contains(keys(local.master_nodes), each.key) ? "controlplane" : "worker"}"
 }
 
 # Dynamic outputs for all VMs

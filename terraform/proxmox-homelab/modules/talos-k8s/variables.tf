@@ -97,6 +97,18 @@ variable "emulatessd" {
   default     = true
 }
 
+variable "longhorn_disk_size" {
+  type        = string
+  description = "The size of the Longhorn data disk (set to empty string to disable)"
+  default     = ""
+}
+
+variable "longhorn_storage" {
+  type        = string
+  description = "The storage to use for Longhorn disk"
+  default     = "local-lvm"
+}
+
 variable "tags" {
   type        = string
   description = "Tags to assign to the VM"

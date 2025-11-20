@@ -32,7 +32,7 @@ spec:
             - retrans=2
         storageClass:
           name: nfs-client
-          defaultClass: true
+          defaultClass: false
           allowVolumeExpansion: true
           reclaimPolicy: Delete
           archiveOnDelete: false

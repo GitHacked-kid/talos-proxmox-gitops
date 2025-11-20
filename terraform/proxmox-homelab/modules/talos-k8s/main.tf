@@ -30,6 +30,20 @@ resource "proxmox_vm_qemu" "vm" {
           emulatessd = var.emulatessd
         }
       }
+      # Longhorn data disk (optional, controlled by longhorn_disk_size variable)
+      dynamic "scsi1" {
+        for_each = var.longhorn_disk_size != "" ? [1] : []
+        content {
+          disk {
+            storage    = var.longhorn_storage
+            size       = var.longhorn_disk_size
+            cache      = "writeback"
+            discard    = true
+            iothread   = true
+            emulatessd = true
+          }
+        }
+      }
     }
   }
 
