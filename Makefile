@@ -389,10 +389,14 @@ extract-ca: ## Extract homelab CA certificate
 trust-ca: extract-ca ## Trust homelab CA certificate (Linux)
 	@echo "$(YELLOW)🔐 Installing homelab CA certificate...$(NC)"
 	@if [ "$$(uname)" = "Linux" ]; then \
+		echo "$(YELLOW)Removing old certificate if exists...$(NC)"; \
+		sudo rm -f /usr/local/share/ca-certificates/homelab-ca.crt; \
+		echo "$(YELLOW)Installing fresh certificate...$(NC)"; \
 		sudo cp homelab-ca.crt /usr/local/share/ca-certificates/homelab-ca.crt; \
-		sudo update-ca-certificates; \
+		sudo update-ca-certificates --fresh; \
 		echo "$(GREEN)✅ CA certificate installed and trusted (Linux)$(NC)"; \
 	elif [ "$$(uname)" = "Darwin" ]; then \
+		sudo security delete-certificate -c "Homelab Root CA" /Library/Keychains/System.keychain 2>/dev/null || true; \
 		sudo security add-trusted-cert -d -r trustRoot \
 			-k /Library/Keychains/System.keychain homelab-ca.crt; \
 		echo "$(GREEN)✅ CA certificate installed and trusted (macOS)$(NC)"; \
