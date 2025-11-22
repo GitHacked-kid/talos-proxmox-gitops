@@ -69,10 +69,15 @@
     dest: "{{ talos_config_dir }}/kubelet-cert-approver.yaml"
     mode: '0644'
 
-- name: Create Longhorn support patch
+- name: Create system extensions and Longhorn support patch
   ansible.builtin.copy:
     content: |
       machine:
+        install:
+          extensions:
+            - image: ghcr.io/siderolabs/qemu-guest-agent:9.2.2
+            - image: ghcr.io/siderolabs/iscsi-tools:v0.2.0
+            - image: ghcr.io/siderolabs/util-linux-tools:2.40.2
         kubelet:
           extraMounts:
             - destination: /var/lib/longhorn
