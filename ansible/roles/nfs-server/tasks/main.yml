@@ -2,6 +2,29 @@
 # NFS Server Configuration Tasks
 # This role sets up an NFS server for shared storage across the homelab
 
+- name: Disable IPv6 for apt (fix connectivity issues)
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/99force-ipv4
+    content: 'Acquire::ForceIPv4 "true";'
+    mode: '0644'
+  become: true
+
+- name: Wait for apt lock to be released
+  ansible.builtin.shell: |
+    while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+      echo "Waiting for apt lock..."
+      sleep 2
+    done
+  changed_when: false
+
+- name: Update apt cache
+  apt:
+    update_cache: true
+  retries: 3
+  delay: 10
+  register: apt_update
+  until: apt_update is success
+
 - name: Install NFS server packages
   apt:
     name:
@@ -9,7 +32,10 @@
       - nfs-common
       - rpcbind
     state: present
-    update_cache: true
+  retries: 3
+  delay: 10
+  register: apt_install
+  until: apt_install is success
 
 - name: Create NFS export directories
   file:
