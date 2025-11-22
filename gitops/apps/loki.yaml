@@ -57,6 +57,7 @@ spec:
 
             # Limits configuration
             limits_config:
+              volume_enabled: true
               retention_period: 720h  # 30 days
               max_query_series: 100000
               max_query_parallelism: 32
@@ -67,6 +68,7 @@ spec:
               retention_enabled: true
               retention_delete_delay: 2h
               retention_delete_worker_count: 150
+              delete_request_store: s3  # Required when retention is enabled
 
           # Deployment configuration
           deploymentMode: SimpleScalable
