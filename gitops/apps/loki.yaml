@@ -76,6 +76,10 @@ spec:
           # Backend (ingester, querier, query-frontend)
           backend:
             replicas: 2
+            persistence:
+              enabled: true
+              storageClass: nfs-client  # Use NFS, not Longhorn
+              size: 10Gi
             resources:
               requests:
                 cpu: 100m
