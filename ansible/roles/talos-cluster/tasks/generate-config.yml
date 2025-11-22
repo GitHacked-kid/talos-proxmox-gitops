@@ -69,18 +69,22 @@
     dest: "{{ talos_config_dir }}/kubelet-cert-approver.yaml"
     mode: '0644'
 
-- name: Create system extensions and Longhorn support patch
+- name: Create system extensions factory image patch
   ansible.builtin.copy:
     content: |
-      # Patch for Proxmox and Longhorn
-      customization:
-        systemExtensions:
-          officialExtensions:
-            # For QEMU support with Proxmox
-            - siderolabs/qemu-guest-agent
-            # Longhorn support
-            - siderolabs/iscsi-tools
-            - siderolabs/util-linux-tools
+      # System extensions using Talos Image Factory
+      # Extensions: qemu-guest-agent, iscsi-tools, util-linux-tools for Longhorn
+      machine:
+        install:
+          image: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba:v{{ talos_version }}
+    dest: "{{ talos_config_dir }}/system-extensions.yaml"
+    mode: '0644'
+
+- name: Create machine features and Longhorn support patch
+  ansible.builtin.copy:
+    content: |
+      # Machine features and Longhorn support (Talos v1.10+)
+      # For Talos v1.10+, use /var/mnt/longhorn instead of /var/lib/longhorn
       machine:
         features:
           # KubePrism: Local load balancer for Kubernetes API server
@@ -90,14 +94,14 @@
             port: 7445
         kubelet:
           extraMounts:
-            - destination: /var/lib/longhorn
+            - destination: /var/mnt/longhorn
               type: bind
-              source: /var/lib/longhorn
+              source: /var/mnt/longhorn
               options:
                 - bind
                 - rshared
                 - rw
-    dest: "{{ talos_config_dir }}/longhorn-support.yaml"
+    dest: "{{ talos_config_dir }}/machine-features.yaml"
     mode: '0644'
 
 - name: Create control plane hostname patch
@@ -140,7 +144,8 @@
       --config-patch @installer-version.yaml
       --config-patch @kubelet-certs.yaml
       --config-patch @kubelet-cert-approver.yaml
-      --config-patch @longhorn-support.yaml
+      --config-patch @system-extensions.yaml
+      --config-patch @machine-features.yaml
       --config-patch-control-plane @controlplane-hostname.yaml
       --output rendered-cp
     chdir: "{{ talos_config_dir }}"
@@ -159,7 +164,8 @@
       --config-patch @installer-version.yaml
       --config-patch @kubelet-certs.yaml
       --config-patch @kubelet-cert-approver.yaml
-      --config-patch @longhorn-support.yaml
+      --config-patch @system-extensions.yaml
+      --config-patch @machine-features.yaml
       --config-patch-worker @{{ item.hostname }}-hostname.yaml
       --output rendered-{{ item.hostname }}
     chdir: "{{ talos_config_dir }}"

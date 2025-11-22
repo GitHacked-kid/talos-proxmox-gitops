@@ -56,9 +56,9 @@ spec:
             # Performance settings
             guaranteedInstanceManagerCPU: 12
 
-            # Talos-specific settings
+            # Talos-specific settings (v1.10+ uses /var/mnt/longhorn)
             createDefaultDiskLabeledNodes: true
-            defaultDataPath: /var/lib/longhorn
+            defaultDataPath: /var/mnt/longhorn
 
             # System management
             orphanAutoDeletion: true
