@@ -39,7 +39,7 @@ spec:
             expose:
               default: true
             middlewares:
-              - traefik-system-redirect-to-https@kubernetescrd
+              - traefik-system-https-redirect@kubernetescrd
 
           # HTTPS
           websecure:
