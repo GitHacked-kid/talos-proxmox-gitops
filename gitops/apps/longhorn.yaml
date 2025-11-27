@@ -49,8 +49,8 @@ spec:
             nodeDrainPolicy: block-if-contains-last-replica
             replicaReplenishmentWaitInterval: 600
 
-            # Backup configuration (using NFS)
-            backupTarget: nfs://10.20.0.44:/srv/nfs/backups
+            # Backup configuration (using OMV NFS server)
+            backupTarget: nfs://10.20.0.229:/export/k8s-nfs/longhorn-backups
             backupTargetCredentialSecret: ""
 
             # Performance settings

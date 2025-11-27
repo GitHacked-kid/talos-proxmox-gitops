@@ -104,7 +104,7 @@
     dest: "{{ talos_config_dir }}/machine-features.yaml"
     mode: '0644'
 
-- name: Create control plane machine patch (hostname + install disk)
+- name: Create control plane machine patch (hostname + install disk + longhorn disk)
   ansible.builtin.copy:
     content: |
       machine:
@@ -112,10 +112,16 @@
           hostname: {{ talos_nodes.control_plane.hostname }}
         install:
           disk: {{ talos_nodes.control_plane.install_disk | default(default_install_disk) }}
+      {% if talos_nodes.control_plane.longhorn_disk is defined %}
+        disks:
+          - device: {{ talos_nodes.control_plane.longhorn_disk }}
+            partitions:
+              - mountpoint: /var/mnt/longhorn
+      {% endif %}
     dest: "{{ talos_config_dir }}/controlplane-machine.yaml"
     mode: '0644'
 
-- name: Create VM worker machine patches (hostname + install disk)
+- name: Create VM worker machine patches (hostname + install disk + longhorn disk)
   ansible.builtin.copy:
     content: |
       machine:
@@ -123,6 +129,12 @@
           hostname: {{ item.hostname }}
         install:
           disk: {{ item.install_disk | default(default_install_disk) }}
+      {% if item.longhorn_disk is defined %}
+        disks:
+          - device: {{ item.longhorn_disk }}
+            partitions:
+              - mountpoint: /var/mnt/longhorn
+      {% endif %}
     dest: "{{ talos_config_dir }}/{{ item.hostname }}-machine.yaml"
     mode: '0644'
   loop: "{{ talos_nodes.workers }}"
