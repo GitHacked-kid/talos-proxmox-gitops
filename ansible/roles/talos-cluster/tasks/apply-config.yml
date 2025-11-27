@@ -40,6 +40,10 @@
   register: apply_cp_result
   failed_when: apply_cp_result.rc != 0
 
+- name: Combine all workers (VMs + bare metal)
+  ansible.builtin.set_fact:
+    all_workers: "{{ talos_nodes.workers + (baremetal_workers | default([])) }}"
+
 - name: Apply worker configurations
   ansible.builtin.command:
     cmd: >
@@ -47,7 +51,7 @@
       --nodes {{ item.ip }}
       --file rendered/{{ item.hostname }}.yaml
     chdir: "{{ talos_config_dir }}"
-  loop: "{{ talos_nodes.workers }}"
+  loop: "{{ all_workers }}"
   when: apply_needed | bool
   changed_when: true
   register: apply_worker_result

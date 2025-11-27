@@ -5,7 +5,7 @@
 #
 # This script orchestrates the 3-layer deployment:
 # - Layer 1: Infrastructure (Terraform - VMs)
-# - Layer 2: Configuration (Ansible - NFS + Talos Kubernetes)
+# - Layer 2: Configuration (Ansible - Talos Kubernetes)
 # - Layer 3: GitOps (ArgoCD + Applications)
 #
 # Usage: ./deploy-homelab.sh [--skip-layer1] [--skip-layer2] [--skip-layer3]
@@ -57,14 +57,16 @@ Usage: $0 [OPTIONS]
 
 Options:
   --skip-layer1    Skip Layer 1 (Infrastructure deployment)
-  --skip-layer2    Skip Layer 2 (NFS + Talos configuration)
+  --skip-layer2    Skip Layer 2 (Talos configuration)
   --skip-layer3    Skip Layer 3 (GitOps deployment)
   --help           Show this help message
 
 Layers:
-  Layer 1: Infrastructure (Terraform - 3 Talos VMs + 1 NFS VM)
-  Layer 2: Configuration (Ansible - NFS Server + Talos Kubernetes)
+  Layer 1: Infrastructure (Terraform - Talos VMs)
+  Layer 2: Configuration (Ansible - Talos Kubernetes)
   Layer 3: GitOps (ArgoCD + Applications)
+
+  NFS: Uses external OMV server at 10.20.0.229 (not managed by this script)
 
 EOF
             exit 0
@@ -209,20 +211,16 @@ layer1_infrastructure() {
     log "Generating Ansible inventory from Terraform..."
     python3 "${SCRIPT_DIR}/scripts/generate-ansible-inventory.py"
 
-    log "Generating Longhorn node configurations from Terraform..."
-    python3 "${SCRIPT_DIR}/scripts/generate-longhorn-nodes.py"
-
     log "✅ Layer 1 Complete: Infrastructure deployed"
     echo "VMs Created:"
     terraform output -json all_vms | jq -r 'to_entries[] | "  - \(.value.name): \(.value.type) (MAC: \(.value.mac_address))"' || true
-    echo "  - NFS Server: 10.20.0.44"
 
     # Wait for VMs to boot
     log "Waiting for VMs to boot (60 seconds)..."
     sleep 60
 
     log "Checking VM connectivity..."
-    for ip in 10.20.0.40 10.20.0.41 10.20.0.42 10.20.0.44; do
+    for ip in 10.20.0.40 10.20.0.41 10.20.0.42 10.20.0.43; do
         if ! timeout 300 bash -c "until ping -c 1 $ip &>/dev/null; do sleep 5; done"; then
             log_error "VM $ip is not reachable"
             exit 1
@@ -238,19 +236,19 @@ layer2_configuration() {
         return 0
     fi
 
-    log_layer "Starting Layer 2: Configuration (NFS + Talos Kubernetes)"
+    log_layer "Starting Layer 2: Configuration (Talos Kubernetes)"
 
     cd "${ANSIBLE_DIR}"
 
-    log "Running Ansible configuration (NFS + Talos)..."
+    log "Running Ansible configuration (Talos)..."
     if ! ansible-playbook -i inventory.yml playbooks/layer2-configure.yml; then
         log_error "Layer 2 failed - Talos VMs have been cleaned up"
         exit 1
     fi
 
     log "✅ Layer 2 Complete: Configuration applied"
-    echo "  - NFS Server configured at 10.20.0.44:/srv/nfs"
-    echo "  - Talos Kubernetes cluster ready (3 nodes)"
+    echo "  - NFS: Using external OMV server at 10.20.0.229"
+    echo "  - Talos Kubernetes cluster ready"
     echo "  - Cilium CNI installed"
     echo "  - Kubeconfig: ${KUBECONFIG_PATH}"
 }

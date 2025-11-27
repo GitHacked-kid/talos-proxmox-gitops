@@ -24,7 +24,6 @@ spec:
           server: 10.20.0.229
           path: /export/k8s-nfs
           mountOptions:
-            - nfsvers=4.1
             - rw
             - hard
             - timeo=600
@@ -36,7 +35,6 @@ spec:
           reclaimPolicy: Delete
           archiveOnDelete: false
           mountOptions:
-            - nfsvers=4.1
             - rw
             - hard
   syncPolicy:

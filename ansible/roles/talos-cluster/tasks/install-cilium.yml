@@ -54,9 +54,13 @@
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
   changed_when: false
 
+- name: Combine all workers (VMs + bare metal)
+  ansible.builtin.set_fact:
+    all_workers: "{{ talos_nodes.workers + (baremetal_workers | default([])) }}"
+
 - name: Calculate expected node count
   ansible.builtin.set_fact:
-    expected_nodes: "{{ 1 + (talos_nodes.workers | length) }}"
+    expected_nodes: "{{ 1 + (all_workers | length) }}"
 
 - name: Wait for all nodes to become Ready (now that CNI is installed)
   ansible.builtin.command:

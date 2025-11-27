@@ -8,13 +8,17 @@
     timeout: 300
     msg: "Control plane {{ talos_nodes.control_plane.ip }} is not reachable"
 
+- name: Combine all workers (VMs + bare metal)
+  ansible.builtin.set_fact:
+    all_workers: "{{ talos_nodes.workers + (baremetal_workers | default([])) }}"
+
 - name: Wait for worker nodes to be reachable
   ansible.builtin.wait_for:
     host: "{{ item.ip }}"
     port: 50000
     timeout: 300
     msg: "Worker {{ item.ip }} is not reachable"
-  loop: "{{ talos_nodes.workers }}"
+  loop: "{{ all_workers }}"
 
 - name: Display node readiness
   ansible.builtin.debug:

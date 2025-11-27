@@ -1,13 +1,17 @@
 ---
 # Label Kubernetes nodes with proper roles and metadata
 
+- name: Combine all workers (VMs + bare metal)
+  ansible.builtin.set_fact:
+    all_workers: "{{ talos_nodes.workers + (baremetal_workers | default([])) }}"
+
 - name: Wait for all nodes to be Ready
   ansible.builtin.shell: |
     kubectl get nodes --no-headers 2>/dev/null | grep -v NotReady | wc -l
   environment:
     KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
   register: ready_nodes
-  until: ready_nodes.stdout | int == (1 + talos_nodes.workers | length)
+  until: ready_nodes.stdout | int == (1 + all_workers | length)
   retries: 30
   delay: 10
   changed_when: false
@@ -17,7 +21,7 @@
     kubectl label node {{ item.hostname }} node-role.kubernetes.io/worker='' --overwrite
   environment:
     KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
-  loop: "{{ talos_nodes.workers }}"
+  loop: "{{ all_workers }}"
   register: label_result
   changed_when: "'labeled' in label_result.stdout or 'not labeled' not in label_result.stdout"
   failed_when: false
@@ -39,7 +43,7 @@
       --overwrite
   environment:
     KUBECONFIG: "{{ talos_config_dir }}/rendered/kubeconfig"
-  loop: "{{ talos_nodes.workers }}"
+  loop: "{{ all_workers }}"
   register: topology_result
   changed_when: "'labeled' in topology_result.stdout"
   failed_when: false
