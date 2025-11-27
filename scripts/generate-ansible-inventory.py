@@ -45,11 +45,12 @@ def extract_baremetal_section(file_path):
     with open(file_path) as f:
         content = f.read()
 
-    # Look for baremetal_workers section
+    # Look for baremetal_workers section - stop at next top-level key (no indentation)
+    # Match from "baremetal_workers:" until we hit a line starting with a lowercase letter followed by colon
     match = re.search(
-        r'(# Bare metal workers.*?baremetal_workers:.*?)(?=\n# [A-Z]|\n[a-z_]+:|\Z)',
+        r'(# Bare metal workers[^\n]*\n(?:#[^\n]*\n)*baremetal_workers:\n(?:[ \t]+[^\n]*\n)*)',
         content,
-        re.DOTALL
+        re.MULTILINE
     )
     if match:
         return match.group(1).rstrip()
@@ -111,15 +112,18 @@ cluster_endpoint: "https://{cp_ip}:6443"  # Control plane IP
 # Default install disk (used if not specified per node)
 default_install_disk: "/dev/sda"
 
+# Default Longhorn disk (used for storage on all nodes)
+default_longhorn_disk: "/dev/sdb"
+
 # Talos node configuration
 # - install_disk: optional, defaults to default_install_disk
-# - longhorn_disk: optional, dedicated disk for Longhorn storage
+# - longhorn_disk: optional, dedicated disk for Longhorn storage (defaults to default_longhorn_disk)
 talos_nodes:
   control_plane:
     hostname: "{cp_name}"
     ip: "{cp_ip}"
     vmid: {cp_vmid}
-    # install_disk: "/dev/sda"  # uses default
+    longhorn_disk: "/dev/sdb"  # 500GB for Longhorn
   # VM workers (from Terraform)
   workers:
 """
@@ -128,6 +132,7 @@ talos_nodes:
         ansible_vars += f"""    - hostname: "{worker['hostname']}"
       ip: "{worker['ip']}"
       vmid: {worker['vmid']}
+      longhorn_disk: "/dev/sdb"  # 500GB for Longhorn
 """
 
     # Add baremetal_workers section (preserved or template)
