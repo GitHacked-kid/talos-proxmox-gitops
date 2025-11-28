@@ -21,6 +21,12 @@ spec:
         # Kubernetes Event Exporter - Export k8s events to Loki
         # View events in Grafana instead of kubectl describe/get events
 
+        # Use upstream image (Bitnami image has availability issues)
+        image:
+          registry: ghcr.io
+          repository: resmoio/kubernetes-event-exporter
+          tag: v1.7
+
         # Configuration for event routing
         config:
           logLevel: info
