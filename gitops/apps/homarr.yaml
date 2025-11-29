@@ -45,6 +45,33 @@ spec:
             storageClassName: "nfs-client"
             size: "1Gi"
 
+        # Override ports - v1.44 uses port 3000, not 7575
+        containerPorts:
+          http:
+            port: 3000
+            protocol: TCP
+
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+
+        service:
+          ports:
+            port: 3000
+            targetPort: 3000
+
         # Resources
         resources:
           requests:

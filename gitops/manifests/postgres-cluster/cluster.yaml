@@ -39,6 +39,10 @@ spec:
       global:
         repo1-retention-full: "7"
         repo1-retention-full-type: time
+  # Post-deploy SQL to grant schema permissions
+  databaseInitSQL:
+    name: homarr-init-sql
+    key: init.sql
   users:
     - name: homarr
       databases:
