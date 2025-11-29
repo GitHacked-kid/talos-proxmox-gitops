@@ -149,6 +149,12 @@ spec:
           # Single binary mode disabled (using SimpleScalable)
           singleBinary:
             replicas: 0
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/persistentVolumeClaimRetentionPolicy
+        - /spec/volumeClaimTemplates/0/status
   syncPolicy:
     automated:
       prune: true
@@ -156,3 +162,4 @@ spec:
     syncOptions:
       - CreateNamespace=false  # monitoring namespace already exists
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
